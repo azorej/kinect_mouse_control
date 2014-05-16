@@ -8,7 +8,7 @@ BEGIN_KINECT_NAMESPACE
 class loop_controller_interface
 {
 public:
-    virtual ~loop_controller_interface() = 0;
+    virtual ~loop_controller_interface() { }
 
     virtual void set_frequency(float) = 0;
     virtual void start_looping(std::function<void()> const&) = 0;

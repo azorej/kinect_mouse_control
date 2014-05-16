@@ -13,7 +13,7 @@ void simple_loop_controller_t::start_looping(std::function<void ()> const& func)
 
     auto timer = new QTimer(this);
     connect(timer, SIGNAL(timeout()), this, SLOT(do_loop()));
-    timer->start(1.f/_frequency);
+    timer->start(1000.f/_frequency);
 }
 
 void simple_loop_controller_t::do_loop()

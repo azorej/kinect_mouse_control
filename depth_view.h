@@ -1,7 +1,7 @@
 #ifndef DEPTH_VIEW_H
 #define DEPTH_VIEW_H
 
-#  include "kinect/viewer.h"
+#  include "kinect/video_streamer.h"
 
 #  include <QGLWidget>
 
@@ -12,7 +12,7 @@
 class depth_view_t : public QGLWidget
 {
 public:
-    depth_view_t(QWidget* parent, kinect::viewer_t* viewer);
+    depth_view_t(QWidget* parent, kinect::video_streamer_t* video_streamer);
 
 private:
     int _width ,_height;
@@ -26,9 +26,9 @@ private:
     void initializeGL();
     void resizeGL(int width, int height);
     void paintGL();
-    void paintTrack();
+    //void paintTrack();
 
-    void update_view(kinect::depth_map_t&& depth_map);
+    void update_depth_map(kinect::depth_map_t &depth_map);
 };
 
 #endif // DEPTH_VIEW_H

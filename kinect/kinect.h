@@ -12,7 +12,7 @@
 BEGIN_KINECT_NAMESPACE
 
 class hand_tracker_t;
-class viewer_t;
+class video_streamer_t;
 
 class kinect_t
 {
@@ -27,9 +27,9 @@ public:
     void close();
 
     hand_tracker_t* create_hand_tracker();
-    viewer_t* create_viewer();
+    video_streamer_t* create_video_streamer();
 
-    void get_commands(command_queue_t* command_queue);
+    void swap_command_queue(command_queue_t* command_queue);
 
     /**
      *LoopContoller must inherit loop_controller_interface
@@ -40,7 +40,7 @@ public:
 
 private:
     std::unique_ptr<hand_tracker_t> _hand_tracker;
-    std::unique_ptr<viewer_t> _viewer;
+    std::unique_ptr<video_streamer_t> _viewer;
     std::unique_ptr<loop_controller_interface> _loop_controller;
 
     bool _is_init;

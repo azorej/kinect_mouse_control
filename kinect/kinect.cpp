@@ -1,7 +1,7 @@
 #  include "kinect.h"
 
 #  include "hand_tracker.h"
-#  include "viewer.h"
+#  include "video_streamer.h"
 #  include "utils.h"
 
 #  include "NiTE.h"
@@ -20,13 +20,7 @@ kinect_t::~kinect_t()
 
 void kinect_t::init()
 {
-    nite::Status niteRc;
 
-    niteRc = nite::NiTE::initialize();
-    if (niteRc != nite::STATUS_OK)
-    {
-        throw std::runtime_error("NiTE initialization failed");
-    }
 
     _is_init = true;
 }
@@ -42,20 +36,20 @@ void kinect_t::close()
 
 hand_tracker_t *kinect_t::create_hand_tracker()
 {
-    _hand_tracker.reset(new hand_tracker_t(&_command_queue));
+    _hand_tracker.reset(new hand_tracker_t(_command_queue));
     return _hand_tracker.get();
 }
 
-viewer_t *kinect_t::create_viewer()
+video_streamer_t *kinect_t::create_video_streamer()
 {
-    _viewer.reset(new viewer_t(&_command_queue));
+    _viewer.reset(new video_streamer_t(_command_queue));
     return _viewer.get();
 }
 
-void kinect_t::get_commands(command_queue_t *command_queue)
+void kinect_t::swap_command_queue(command_queue_t *command_queue)
 {
     //TODO add multithreading safeness
-    _command_queue.swap(command_queue);
+    _command_queue.swap(*command_queue);
 }
 
 void kinect_t::loop()
@@ -70,7 +64,7 @@ void kinect_t::loop()
     }
     catch(...)
     {
-        _command_queue->push(wrap_exception(std::current_exception()));
+        _command_queue.push(wrap_exception(std::current_exception()));
         return;
     }
 }

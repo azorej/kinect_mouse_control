@@ -1,44 +1,48 @@
 #ifndef LOGGING_SYSTEM_H
 #define LOGGING_SYSTEM_H
 
-#  include <string>
-#  include <vector>
-#  include <mutex>
+#include <QTextBrowser>
+
+#include <assert.h>
 
 class logging_system_t
 {
 public:
+    logging_system_t(logging_system_t const&) = delete;
+
     static logging_system_t& singleton()
     {
-        static logging_system_t single;
-        return single;
+        static logging_system_t instance;
+        return instance;
     }
 
-    void record(const char* msg)
+    void do_log(const char* msg)
     {
-        std::lock_guard<std::mutex> lock(_mutex);
-        _messages.push_back(std::string(msg));
+        assert(_is_init);
+        _dest->append(QString(msg));
     }
 
-    std::vector<std::string> get()
+    void set_destination(QTextBrowser* dest)
     {
-        std::lock_guard<std::mutex> lock(_mutex);
-        std::vector<std::string> ret;
-        ret.swap(_messages);
-        return ret;
+        _dest = dest;
+        _is_init = true;
     }
+
 
 private:
-    std::vector<std::string> _messages;
-    std::mutex _mutex;
+    QTextBrowser* _dest;
+    bool _is_init;
 
-    logging_system_t() { }
-    logging_system_t(logging_system_t const&);
+    logging_system_t()
+        : _is_init(false)
+    {
+
+    }
 };
 
 static inline void log(const char* msg)
 {
-    logging_system_t::singleton().record(msg);
+    logging_system_t::singleton().do_log(msg);
 }
 
 #endif // LOGGING_SYSTEM_H

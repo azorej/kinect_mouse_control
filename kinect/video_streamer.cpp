@@ -1,8 +1,10 @@
-#  include "viewer.h"
+#include "video_streamer.h"
+
+#include <stdexcept>
 
 BEGIN_KINECT_NAMESPACE
 
-viewer_t::viewer_t(command_queue_t *command_queue)
+video_streamer_t::video_streamer_t(command_queue_t &command_queue)
     : _command_queue(command_queue)
 {
     openni::Device device;
@@ -13,12 +15,20 @@ viewer_t::viewer_t(command_queue_t *command_queue)
     if(status != openni::STATUS_OK) throw std::runtime_error("Viewer exception. Can't create depth video stream.");
 }
 
-void viewer_t::set_callback(viewer_callback_t&& func)
+vector2_t video_streamer_t::get_window_size()
+{
+
+    auto video_mode = _video_stream.getVideoMode();
+
+    return {(float)video_mode.getResolutionX(), (float)video_mode.getResolutionY()};
+}
+
+void video_streamer_t::set_depth_callback(depth_callback_t&& func)
 {
     _callback = func;
 }
 
-void viewer_t::loop()
+void video_streamer_t::loop()
 {
     if(_callback)
     {
@@ -29,7 +39,7 @@ void viewer_t::loop()
         depth_map_t depth_map(depth_frame.getWidth(), depth_frame.getHeight());
         depth_map.set_data((const openni::DepthPixel*)depth_frame.getData());
 
-        _command_queue->push(std::bind(_callback, depth_map));
+        _command_queue.push(std::bind(_callback, depth_map));
     }
 }
 

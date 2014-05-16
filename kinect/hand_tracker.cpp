@@ -1,8 +1,10 @@
-#  include "hand_tracker.h"
+#include "hand_tracker.h"
+
+#include <stdexcept>
 
 BEGIN_KINECT_NAMESPACE
 
-hand_tracker_t::hand_tracker_t(command_queue_t *command_queue)
+hand_tracker_t::hand_tracker_t(command_queue_t &command_queue)
     : _command_queue(command_queue)
 {
     auto niteRc = _tracker.create();
@@ -34,7 +36,7 @@ void hand_tracker_t::loop()
         nite::HandTrackerFrameRef hand_frame;
         nite::Status rc = _tracker.readFrame(&hand_frame);
 
-        if (rc != nite::STATUS_OK) throw std::runtime_exception("Hand tracker error. Can't read hand frame.");
+        if (rc != nite::STATUS_OK) throw std::runtime_error("Hand tracker error. Can't read hand frame.");
 
         check_gestures(hand_frame);
         track_hands(hand_frame);
@@ -43,9 +45,10 @@ void hand_tracker_t::loop()
 
 void hand_tracker_t::check_gestures(const nite::HandTrackerFrameRef &hand_frame)
 {
-    auto gestures = hand_frame.getGestures();
-    for (auto gesture: gestures)
+    auto const& gestures = hand_frame.getGestures();
+    for(int i=0; i<gestures.getSize(); ++i)
     {
+        auto const& gesture = gestures[i];
         if(gesture.isComplete())
         {
             nite::HandId newId;
@@ -57,29 +60,30 @@ void hand_tracker_t::check_gestures(const nite::HandTrackerFrameRef &hand_frame)
 void hand_tracker_t::track_hands(const nite::HandTrackerFrameRef &hand_frame)
 {
     hand_arr_t hand_arr;
-    auto hands = hand_frame.getHands();
-    for (auto hand: hands)
+    auto const& hands = hand_frame.getHands();
+    for(int i=0; i<hands.getSize(); ++i)
     {
+        auto const& hand = hands[i];
         if(hand.isTracking())
         {
             hand_t hand_info;
             hand_info.id = hand.getId();
 
             const nite::Point3f& position = hand.getPosition();
-            hand_info.global_coordinates.set(position.x, position.y, position.z);
+            hand_info.global_coordinates = {position.x, position.y, position.z};
 
             auto& depth_c = hand_info.depth_coordinates;
 
             auto status = _tracker.convertHandCoordinatesToDepth(position.x, position.y, position.z, &depth_c.x, &depth_c.y);
 
-            if(status != nite::STATUS_OK) throw std::runtime_exception("Hand tracker error. Can't convert hand coordinates.");
+            if(status != nite::STATUS_OK) throw std::runtime_error("Hand tracker error. Can't convert hand coordinates.");
 
-            hand_arr.push_back(hand);
+            hand_arr.push_back(hand_info);
         }
     }
 
     command_t track_command = std::bind(_callback, std::move(hand_arr));
-    _command_queue->push(track_command);
+    _command_queue.push(track_command);
 }
 
 END_KINECT_NAMESPACE

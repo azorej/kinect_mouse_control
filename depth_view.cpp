@@ -1,8 +1,9 @@
 #include "depth_view.h"
 
-#  include "logging_system.h"
+#include "logging_system.h"
 
-#  include "GL/glu.h"
+#include "GL/glu.h"
+#include <sstream>
 
 #define TEXTURE_SIZE	512
 
@@ -23,16 +24,18 @@ float Colors[][3] = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}, {1, 1, 1}};
     }
 
 
-depth_view_t::depth_view_t(QWidget* parent, kinect::viewer_t* viewer)
+depth_view_t::depth_view_t(QWidget* parent, kinect::video_streamer_t* video_streamer)
     : QGLWidget(parent)
 {
     setFormat(QGLFormat(QGL::DoubleBuffer));
     glDepthFunc(GL_LEQUAL);
 
-    viewer->set_callback(std::bind(&depth_view_t::update_view, this, std::placeholders::_1));
+    video_streamer->set_depth_callback(std::bind(&depth_view_t::update_depth_map, this, std::placeholders::_1));
 
-    _tex_map_width = MIN_CHUNKS_SIZE(viewer->get_width(), TEXTURE_SIZE);
-    _tex_map_height = MIN_CHUNKS_SIZE(viewer->get_height(), TEXTURE_SIZE);
+    auto resolution = video_streamer->get_window_size();
+
+    _tex_map_width = MIN_CHUNKS_SIZE(resolution.x, TEXTURE_SIZE);
+    _tex_map_height = MIN_CHUNKS_SIZE(resolution.y, TEXTURE_SIZE);
     _tex_map.resize(_tex_map_width * _tex_map_height);
 }
 
@@ -41,11 +44,6 @@ void depth_view_t::initializeGL()
     qglClearColor(Qt::black);
 
     glMatrixMode(GL_PROJECTION);
-
-//        _update_timer = new QTimer(this);
-//        connect(_update_timer, SIGNAL(timeout()), this, SLOT(updateGL()));
-//        _update_timer->start(50); //20 frames per second
-//        _loop_counter.init();
 }
 
 void depth_view_t::resizeGL(int width, int height)
@@ -67,26 +65,24 @@ void depth_view_t::paintGL()
 
     qglColor(Qt::white);
 
-    if(_hand_buffer.is_init())
+    auto histogram = _depth_map.get_histogram();
+    if(histogram.size() > 0)
     {
-        calculate_histogram();
-
         float factor[3] = {1, 1, 1};
 
-        auto const& depth_map = _hand_buffer.depth_map();
-        for (int y = 0; y < depth_map.height(); ++y)
+        for (int y = 0; y < _depth_map.height(); ++y)
         {
-            for (int x = 0; x < depth_map.width(); ++x)
+            for (int x = 0; x < _depth_map.width(); ++x)
             {
                 factor[0] = Colors[3][0];
                 factor[1] = Colors[3][1];
                 factor[2] = Colors[3][2];
 
-                int nHistValue = _depth_hist[depth_map.get(x,y)];
+                int hist_value = histogram[_depth_map.get(x,y)];
                 auto& pix = _tex_map[x + _tex_map_width*y];
-                pix.r = nHistValue*factor[0];
-                pix.g = nHistValue*factor[1];
-                pix.b = nHistValue*factor[2];
+                pix.r = hist_value*factor[0];
+                pix.g = hist_value*factor[1];
+                pix.b = hist_value*factor[2];
 
                 factor[0] = factor[1] = factor[2] = 1;
             }
@@ -107,19 +103,19 @@ void depth_view_t::paintGL()
         glTexCoord2f(0, 0);
         glVertex2f(0, 0);
         // upper right
-        glTexCoord2f((float)depth_map.width()/(float)_tex_map_width, 0);
-        glVertex2f(wax, 0);
+        glTexCoord2f((float)_depth_map.width()/(float)_tex_map_width, 0);
+        glVertex2f(_width, 0);
         // bottom right
-        glTexCoord2f((float)depth_map.width()/(float)_tex_map_width, (float)depth_map.height()/(float)_tex_map_height);
-        glVertex2f(wax, way);
+        glTexCoord2f((float)_depth_map.width()/(float)_tex_map_width, (float)_depth_map.height()/(float)_tex_map_height);
+        glVertex2f(_width, _height);
         // bottom left
-        glTexCoord2f(0, (float)depth_map.height()/(float)_tex_map_height);
-        glVertex2f(0, way);
+        glTexCoord2f(0, (float)_depth_map.height()/(float)_tex_map_height);
+        glVertex2f(0, _height);
 
         glEnd();
         glDisable(GL_TEXTURE_2D);
 
-        paintTrack();
+        //paintTrack();
     }
 
     CHECK_OPENGL_ERROR();
@@ -127,28 +123,26 @@ void depth_view_t::paintGL()
     glPopMatrix();
 
     swapBuffers();
-
-    ++_loop_counter;
 }
 
-void depth_view_t::paintTrack()
+//void depth_view_t::paintTrack()
+//{
+//    glColor3f((float)1, (float)0, (float)0);
+//    float coordinates[3] = {0};
+//    float factorX = wax / (float)_hand_buffer.depth_map().width();
+//    float factorY = way / (float)_hand_buffer.depth_map().height();
+
+//    coordinates[0] = _hand_buffer.hand_depth_coordinates().x * factorX;
+//    coordinates[1] = _hand_buffer.hand_depth_coordinates().y * factorY;
+
+//    glEnableClientState(GL_VERTEX_ARRAY);
+//    glPointSize(16);
+//    glVertexPointer(3, GL_FLOAT, 0, coordinates);
+//    glDrawArrays(GL_POINTS, 0, 1);
+//    glDisableClientState(GL_VERTEX_ARRAY);
+//}
+
+void depth_view_t::update_depth_map(kinect::depth_map_t& depth_map)
 {
-    glColor3f((float)1, (float)0, (float)0);
-    float coordinates[3] = {0};
-    float factorX = wax / (float)_hand_buffer.depth_map().width();
-    float factorY = way / (float)_hand_buffer.depth_map().height();
-
-    coordinates[0] = _hand_buffer.hand_depth_coordinates().x * factorX;
-    coordinates[1] = _hand_buffer.hand_depth_coordinates().y * factorY;
-
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glPointSize(16);
-    glVertexPointer(3, GL_FLOAT, 0, coordinates);
-    glDrawArrays(GL_POINTS, 0, 1);
-    glDisableClientState(GL_VERTEX_ARRAY);
-}
-
-void depth_view_t::update_view(kinect::depth_map_t&& depth_map)
-{
-    _depth_map = depth_map;
+    _depth_map.swap(depth_map);
 }

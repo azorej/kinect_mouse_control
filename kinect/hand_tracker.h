@@ -1,9 +1,13 @@
 #ifndef KINECT_HAND_TRACKER_H
 #define KINECT_HAND_TRACKER_H
 
-#  include "defs.h"
+#include "defs.h"
+#include "utils.h"
 
-#  include "NiTE.h"
+#include "NiTE.h"
+
+#include <vector>
+#include <functional>
 
 BEGIN_KINECT_NAMESPACE
 
@@ -14,17 +18,16 @@ struct hand_t
     vector3_t global_coordinates;
 };
 
-#  include <vector>
+
 typedef std::vector<hand_t> hand_arr_t;
 
-#  include <functional>
 typedef std::function<void(hand_arr_t)> hand_callback_t;
 
 
 class hand_tracker_t
 {
 public:
-    explicit hand_tracker_t(command_queue_t* command_queue);
+    explicit hand_tracker_t(command_queue_t& command_queue);
 
     void start_tracking();
     void stop_tracking();
@@ -36,7 +39,7 @@ public:
 private:
     nite::HandTracker _tracker;
     hand_callback_t _callback;
-    command_queue_t* _command_queue;
+    command_queue_t& _command_queue;
 
     void check_gestures(nite::HandTrackerFrameRef const& hand_frame);
     void track_hands(nite::HandTrackerFrameRef const& hand_frame);

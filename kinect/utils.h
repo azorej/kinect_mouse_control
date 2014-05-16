@@ -5,7 +5,20 @@
 
 BEGIN_KINECT_NAMESPACE
 
-command_t wrap_exception(std::exception&& excep);
+struct vector2_t
+{
+    float x;
+    float y;
+};
+
+struct vector3_t
+{
+    float x;
+    float y;
+    float z;
+};
+
+command_t wrap_exception(std::exception_ptr&& excep);
 
 END_KINECT_NAMESPACE
 

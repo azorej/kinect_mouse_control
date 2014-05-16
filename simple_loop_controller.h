@@ -1,9 +1,11 @@
 #ifndef SIMPLE_LOOP_CONTROLLER_H
 #define SIMPLE_LOOP_CONTROLLER_H
 
-#  include "kinect/loop_controller_interface.h"
+#include "kinect/loop_controller_interface.h"
 
-class simple_loop_controller_t : public kinect::loop_controller_interface, public QObject
+#include <QObject>
+
+class simple_loop_controller_t : public QObject, public kinect::loop_controller_interface
 {
     Q_OBJECT
 
